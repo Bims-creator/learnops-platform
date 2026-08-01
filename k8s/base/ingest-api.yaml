@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-api
+  labels:
+    app.kubernetes.io/name: ingest-api
+    app.kubernetes.io/part-of: learnops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingest-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ingest-api
+        app.kubernetes.io/part-of: learnops
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: ingest-api
+          image: ghcr.io/bims-creator/learnops-ingest-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - secretRef:
+                name: learnops-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingest-api
+  labels:
+    app.kubernetes.io/name: ingest-api
+    app.kubernetes.io/part-of: learnops
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: ingest-api
+  ports:
+    - port: 80
+      targetPort: http
+      nodePort: 31080
+      name: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ingest-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ingest-api
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ingest-api
+  labels:
+    app.kubernetes.io/name: ingest-api
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingest-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 10s

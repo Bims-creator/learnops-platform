@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: learnops-alerts
+  labels:
+    app.kubernetes.io/part-of: learnops
+    release: monitoring
+spec:
+  groups:
+    - name: learnops.rules
+      rules:
+        - alert: ServiceDown
+          expr: up{job=~"ingest-api|aggregator-worker"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.job }} is down"
+            description: "{{ $labels.job }} has been unreachable for 2 minutes."
+
+        - alert: HighEventFailureRate
+          expr: rate(learnops_events_failed_total[5m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "aggregator-worker is failing to process events"
+            description: "learnops_events_failed_total is increasing - check aggregator-worker logs."
+
+        - alert: IngestApiAutoscalerMaxedOut
+          expr: kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler="ingest-api"} >= kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler="ingest-api"}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ingest-api has been at its HPA replica ceiling for 10 minutes"
+            description: "Sustained load at max replicas - consider raising maxReplicas or investigating traffic."

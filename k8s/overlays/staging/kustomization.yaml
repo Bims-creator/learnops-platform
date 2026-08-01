@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: learnops-staging
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+images:
+  - name: ghcr.io/bims-creator/learnops-ingest-api
+    newTag: latest
+  - name: ghcr.io/bims-creator/learnops-aggregator-worker
+    newTag: latest
+
+patches:
+  - target:
+      kind: Deployment
+      name: ingest-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Service
+      name: ingest-api
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: ClusterIP
+      - op: remove
+        path: /spec/ports/0/nodePort

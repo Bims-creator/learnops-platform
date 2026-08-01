@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.db import get_connection, get_progress
+from app.metrics import EVENTS_INGESTED
 from app.redis_client import EVENTS_QUEUE_KEY, client as redis_client
 from app.schemas import LearningEvent
 
@@ -22,9 +24,15 @@ def readyz():
     return {"status": "ready"}
 
 
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.post("/events", status_code=202)
 def ingest_event(event: LearningEvent):
     redis_client.rpush(EVENTS_QUEUE_KEY, event.model_dump_json())
+    EVENTS_INGESTED.inc()
     return {"queued": True}
 
 

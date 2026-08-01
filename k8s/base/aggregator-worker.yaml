@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aggregator-worker
+  labels:
+    app.kubernetes.io/name: aggregator-worker
+    app.kubernetes.io/part-of: learnops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aggregator-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aggregator-worker
+        app.kubernetes.io/part-of: learnops
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: aggregator-worker
+          image: ghcr.io/bims-creator/learnops-aggregator-worker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+              name: metrics
+          envFrom:
+            - secretRef:
+                name: learnops-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aggregator-worker
+  labels:
+    app.kubernetes.io/name: aggregator-worker
+    app.kubernetes.io/part-of: learnops
+spec:
+  selector:
+    app.kubernetes.io/name: aggregator-worker
+  ports:
+    - port: 9000
+      targetPort: metrics
+      name: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aggregator-worker
+  labels:
+    app.kubernetes.io/name: aggregator-worker
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aggregator-worker
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 10s
