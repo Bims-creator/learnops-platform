@@ -9,6 +9,6 @@ resources:
 
 images:
   - name: ghcr.io/bims-creator/learnops-ingest-api
-    newTag: latest
+    newTag: 927369a775afb1d89932f4d2dd85664f1c041735
   - name: ghcr.io/bims-creator/learnops-aggregator-worker
-    newTag: latest
+    newTag: 927369a775afb1d89932f4d2dd85664f1c041735
