@@ -11,6 +11,19 @@ def get_connection():
     return psycopg.connect(DATABASE_URL, autocommit=True)
 
 
+def init_db(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS student_progress (
+            student_id TEXT PRIMARY KEY,
+            lessons_completed INT NOT NULL DEFAULT 0,
+            scored_events INT NOT NULL DEFAULT 0,
+            total_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+            average_score DOUBLE PRECISION,
+            last_event_at TIMESTAMPTZ
+        )
+    """)
+
+
 def get_progress(conn, student_id: str):
     cursor = conn.execute(
         """

@@ -1,13 +1,14 @@
 from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from app.db import get_connection, get_progress
+from app.db import get_connection, get_progress, init_db
 from app.metrics import EVENTS_INGESTED
 from app.redis_client import EVENTS_QUEUE_KEY, client as redis_client
 from app.schemas import LearningEvent
 
 app = FastAPI(title="learnops-ingest-api")
 db_conn = get_connection()
+init_db(db_conn)
 
 
 @app.get("/healthz")
